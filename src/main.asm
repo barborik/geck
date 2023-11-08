@@ -1,41 +1,29 @@
+    %include "src/enum.inc"
     %include "src/macro.inc"
     
     global main
 
     ; lex.asm
-    extern scan
-    extern token
+    extern putback
 
-    extern _putchar
+    ; gen.asm
+    extern gen
+
+    ; stdio.asm
+    extern _getchar
 
 main:
     _enter
 
-    call    scan
-    xor     ax, ax
-    mov     al, [token]
-    add     al, 65
-    push    ax
-    call    _putchar
+.start:
+    call    _getchar
+    cmp     ax, _EOF
+    je      .end
+    mov     BYTE [putback], al
 
-    call    scan
-    xor     ax, ax
-    mov     al, [token]
-    add     al, 65
-    push    ax
-    call    _putchar
+    call    gen
 
-    call    scan
-    xor     ax, ax
-    mov     al, [token]
-    add     al, 65
-    push    ax
-    call    _putchar
+    jmp     .start
 
-
-    xor     ax, ax
-    mov     ax, [token + 1]
-    push    ax
-    call    _putchar
-
-    _leave 0
+.end:
+    _leave  0

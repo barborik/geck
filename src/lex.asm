@@ -1,8 +1,13 @@
     %include "src/enum.inc"
     %include "src/macro.inc"
 
-    global scan
+    ; bss section
     global token
+    global putback
+
+    ; text section
+    global nextc
+    global scan
 
     ; stdio.asm
     extern _getchar
@@ -13,6 +18,7 @@
 
     section .bss
 
+; token structure
 ; +------+------------------------------------+
 ; | byte | structure member                   |
 ; +------+------------------------------------+
@@ -21,7 +27,10 @@
 ; |  2   | VALUE (macro.asm or literal value) |
 ; |  3   |                                    |
 ; +------+------------------------------------+
-token:  resb  3
+token:      resb 3
+
+; store a character here if it was read, but not used
+putback:    resb 1
 
     section .text
 
@@ -32,6 +41,12 @@ token:  resb  3
 nextc:
     _enter
 .loop:
+    xor     ax, ax
+    mov     al, [putback]
+
+    cmp     al, 0
+    jne     .end
+
     call    _getchar
 
     cmp     ax, ' '
@@ -45,6 +60,8 @@ nextc:
     cmp     ax, `\f`
     je      .loop
 
+.end:
+    mov     BYTE [putback], 0
     _leave 0
 
 ; scan the next lexical token and store it in the token structure
@@ -55,25 +72,34 @@ scan:
     cmp     ax, _EOF
     je      .end
 
+    ; comma separator
+    cmp     ax, ','
+    jne     .L1
+    call    nextc
+.L1:
+
     ; register
     cmp     ax, '%'
-    jne     .L1
+    jne     .L2
     call    djb_hash
     mov     BYTE [token + 0], _REG
     mov     WORD [token + 1], ax
 
     _leave  0
-.L1:
+.L2:
 
     ; literal
     cmp     ax, '$'
-    jne     .L2
+    jne     .L3
     call    parse
     mov     BYTE [token + 0], _LIT
     mov     WORD [token + 1], ax
 
     _leave  0
-.L2:
+.L3:
+
+    ; unprefixed
+    mov     [putback], al
 
     ; instruction
     call    djb_hash

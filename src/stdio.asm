@@ -6,7 +6,6 @@
     extern getchar
     extern putchar
 
-
 ; read one character from standard input
 ;
 ; returns:
@@ -14,7 +13,6 @@
 _getchar:
     _enter
     call    getchar
-.end:
     _leave 0
 
 

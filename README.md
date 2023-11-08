@@ -16,7 +16,7 @@ call arguments - stack, every argument is 2 bytes in size
   
 ### SYNTAX
 hybrid Intel and AT&T syntax  
-you scream at the assembler, so the source is strictly in ALL CAPS!!!    
+you scream at the assembler, so the source is strictly ALL CAPS!!!  
 ```
 MOV (%BX), $2  
 ```

@@ -1,3 +1,2 @@
-mov ax, 256
-mov bx, 256
+mov dh, 2
 

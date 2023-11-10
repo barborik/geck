@@ -1,0 +1,10 @@
+full list of supported instructions
+
+r8  - 8-bit register
+r16 - 16-bit register
+imm - immediate value
+
+mnemonic | first operand | second operand
+-----------------------------------------
+MOV        r8              imm
+MOV        r16             imm

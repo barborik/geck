@@ -3,6 +3,7 @@
 
     ; bss section
     global token
+    global size
     global putback
 
     ; text section
@@ -19,15 +20,18 @@
     section .bss
 
 ; token structure
-; +------+------------------------------------+
-; | byte | structure member                   |
-; +------+------------------------------------+
-; |  1   | TOKEN (macro.asm)                  |
-; +------+------------------------------------+
-; |  2   | VALUE (macro.asm or literal value) |
-; |  3   |                                    |
-; +------+------------------------------------+
+; +--------+------------------------------------+
+; | offset | structure member                   |
+; +--------+------------------------------------+
+; |  0     | TOKEN (enum.inc)                   |
+; +--------+------------------------------------+
+; |  1     | VALUE (enum.inc or literal value)  |
+; |  2     |                                    |
+; +--------+------------------------------------+
 token:      resb 3
+
+; operation size (enum.inc)
+size:       resb 1
 
 ; store a character here if it was read, but not used
 putback:    resb 1
@@ -81,7 +85,7 @@ scan:
     ; register
     cmp     ax, '%'
     jne     .L2
-    call    djb_hash
+    call    reg
     mov     BYTE [token + 0], _REG
     mov     WORD [token + 1], ax
 
@@ -110,6 +114,63 @@ scan:
     _leave  0
 
 
+; TODO: ADD DESC
+reg:
+    _enter
+    call    nextc
+    mov     BYTE [size], _WORD
+
+    cmp     ax, 'A'
+    je      .A
+
+    cmp     ax, 'B'
+    je      .B
+
+    cmp     ax, 'C'
+    je      .C
+
+    cmp     ax, 'D'
+    je      .D
+
+.A:
+    mov     bx, _AX
+    jmp     .next
+
+.B:
+    mov     bx, _BX
+    jmp     .next
+
+.C:
+    mov     bx, _CX
+    jmp     .next
+
+.D:
+    mov     bx, _DX
+    jmp     .next
+
+.next:
+    call    nextc
+
+    cmp     ax, 'L'
+    je      .L
+
+    cmp     ax, 'H'
+    je      .H
+
+    mov     ax, bx
+    _leave  0
+
+.H:
+    add     bx, 4
+.L:
+    mov     ax, bx
+    mov     BYTE [size], _BYTE
+    _leave  0
+
+; parse a decimal integer
+;
+; returns:
+;   WORD - the integer
 parse:
     _enter
     mov     cx, 0

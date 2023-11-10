@@ -3,7 +3,7 @@ minimal 16-bit x86 assembler
   
 ### HOW MINIMAL?
 the only external functions required to link the code are functions to input and output a single byte (getchar and putchar)  
-[src/stdio.asm](https://github.com/barborik/geck/src/stdio.asm) defines _getchar and _putchar, which are just wrappers for the standard C getchar and putchar functions  
+[src/stdio.asm](https://github.com/barborik/geck/blob/main/src/stdio.asm) defines _getchar and _putchar, which are just wrappers for the standard C getchar and putchar functions  
 this can be rewritten when porting to obscure places, like x86 real mode, to read directly from memory or something cool like that  
   
 ### INTERNAL CALLING CONVENTION
@@ -18,5 +18,5 @@ call arguments - stack, every argument is 2 bytes in size
 hybrid Intel and AT&T syntax  
 you scream at the assembler, so the source is strictly ALL CAPS!!!  
 ```
-MOV (%BX), $2  
+MOV (%BX), $2 #WORD  
 ```

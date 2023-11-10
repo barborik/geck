@@ -1,6 +1,6 @@
     %include "src/enum.inc"
     %include "src/macro.inc"
-    %include "src/supported.inc"
+    %include "src/extern.inc"
 
     global gen
 
@@ -11,7 +11,6 @@
 gen:
     _enter
 
-    ; INSTRUCTION
     call    scan
 
     cmp     WORD [token + 1], _MOV

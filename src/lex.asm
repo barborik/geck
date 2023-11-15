@@ -3,6 +3,7 @@
 
     ; bss section
     global token
+    global last
     global size
     global putback
 
@@ -20,15 +21,20 @@
     section .bss
 
 ; token structure
-; +--------+------------------------------------+
-; | offset | structure member                   |
-; +--------+------------------------------------+
-; |  0     | TOKEN (enum.inc)                   |
-; +--------+------------------------------------+
-; |  1     | VALUE (enum.inc or literal value)  |
-; |  2     |                                    |
-; +--------+------------------------------------+
+; +--------+-----------------------------------------+
+; | offset | structure member                        |
+; +--------+-----------------------------------------+
+; |  0     | TOKEN (enum.inc) MSb = 1 -> dereference |
+; +--------+-----------------------------------------+
+; |  1     | VALUE (enum.inc or literal value)       |
+; |  2     |                                         |
+; +--------+-----------------------------------------+
 token:      resb 3
+
+; last token
+last:       resb 3
+; temporary token
+temp:       resb 3
 
 ; operation size (enum.inc)
 size:       resb 1
@@ -68,13 +74,21 @@ nextc:
     mov     BYTE [putback], 0
     _leave 0
 
+
 ; scan the next lexical token and store it in the token structure
+; sets the global token and last (token) structures
 scan:
     _enter
 .read:
     call    nextc
     cmp     ax, _EOF
     je      .end
+
+    ; change last token
+    mov     bl, [token + 0]
+    mov     [last + 0], bl
+    mov     bx, [token + 1]
+    mov     [last + 1], bx
 
     ; comma separator
     cmp     ax, ','
@@ -102,6 +116,36 @@ scan:
     _leave  0
 .L3:
 
+    ; dereference
+    cmp     ax, '('
+    jne     .L4
+
+    ; save last token
+    mov     bl, [last + 0]
+    mov     [temp + 0], bl
+    mov     bx, [last + 1]
+    mov     [temp + 1], bx
+
+    ; parse the actual token
+    call    scan
+
+    ; recover last token
+    mov     bl, [temp + 0]
+    mov     [last + 0], bl
+    mov     bx, [temp + 1]
+    mov     [last + 1], bx
+
+    ; set token MSb to 1
+    mov     al, [token + 0]
+    or      al, 0x80
+    mov     [token + 0], al
+
+    ; get the ending ')'
+    call    nextc
+
+    _leave  0
+.L4:
+
     ; unprefixed
     mov     [putback], al
 
@@ -114,7 +158,10 @@ scan:
     _leave  0
 
 
-; TODO: ADD DESC
+; loads the next register and sets operation size accordingly
+;
+; returns:
+;   WORD - internal register value from enum.inc
 reg:
     _enter
     call    nextc
@@ -167,6 +214,7 @@ reg:
     mov     BYTE [size], _BYTE
     _leave  0
 
+
 ; parse a decimal integer
 ;
 ; returns:
@@ -183,6 +231,7 @@ parse:
     cmp     ax, 1
     jne     .end
 
+    ; Horner's method moment
     mov     ax, 10
     mul     cx
     mov     cx, ax

@@ -5,18 +5,16 @@
 
     ; lex.asm
     extern putback
+    extern nextc
 
     ; gen.asm
     extern gen
-
-    ; stdio.asm
-    extern _getchar
 
 main:
     _enter
 
 .start:
-    call    _getchar
+    call    nextc
     cmp     ax, _EOF
     je      .end
     mov     BYTE [putback], al

@@ -4,7 +4,7 @@ _EOF:   equ -1
 _INS:   equ 1 ; instruction
 _REG:   equ 2 ; register
 _LIT:   equ 3 ; literal
-_LBL:   equ 4 ; label
+_LBL:   equ 6 ; label
 
 ; OPERATION SIZE
 _BYTE:  equ 1

@@ -3,6 +3,8 @@
     global isalpha
     global isdigit
     global djb_hash
+    global encode_rr
+    global encode_mr
 
     ; lex.asm
     extern nextc
@@ -88,3 +90,45 @@ djb_hash:
     mov     [putback], bl
     mov     ax, cx
     _leave  0
+
+
+; encode two registers into a single byte operand
+;
+; params:
+;   [IN] BYTE - first register
+;   [IN] BYTE - second register
+;
+; returns:
+;   BYTE - encoded operand
+encode_rr:
+    _enter
+    _param  ax, 0
+    _param  bx, 1
+
+    ; 11aaabbb
+    ; a - second register
+    ; b - first register
+    shl     bx, 3
+    or      ax, bx
+    or      ax, 0xC0
+
+    _leave  2
+
+
+; encode one register into a m/r operand
+;
+; params:
+;   [IN] BYTE - register
+;
+; returns:
+;   BYTE - encoded operand
+encode_mr:
+    _enter
+    _param  ax, 0
+
+    ; 00aaa110
+    ; a - register
+    shl     ax, 3
+    or      ax, 0x06
+
+    _leave  1

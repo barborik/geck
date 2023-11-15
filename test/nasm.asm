@@ -1,2 +1,1 @@
-mov dh, 2
-
+mov [0x01], cx

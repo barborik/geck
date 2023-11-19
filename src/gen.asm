@@ -10,22 +10,16 @@
 
 gen:
     _enter
-
     call    scan
 
-    cmp     WORD [token + 1], _MOV
-    je      ._MOV
-
-    cmp     WORD [token + 1], _ADD
-    je      ._ADD
-
-._MOV:
+    cmp     WORD [token + 2], _MOV
+    jne     .L1
     call    __MOV
-    jmp     .end
-
-._ADD:
-    call    __ADD
-    jmp     .end
-
-.end:
     _leave  0
+.L1:
+
+    cmp     WORD [token + 2], _ADD
+    jne     .L2
+    call    __ADD
+    _leave  0
+.L2:

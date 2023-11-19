@@ -1,1 +1,4 @@
-MOV ($1), %CX
+MOV %AX, $2
+MOV %BX, %CX
+MOV ($1), %DL
+MOV (%SI), %AH

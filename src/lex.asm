@@ -24,17 +24,19 @@
 ; +--------+-----------------------------------------+
 ; | offset | structure member                        |
 ; +--------+-----------------------------------------+
-; |  0     | TOKEN (enum.inc) MSb = 1 -> dereference |
+; |  0     | TOKEN (enum.inc)                        |
 ; +--------+-----------------------------------------+
-; |  1     | VALUE (enum.inc or literal value)       |
-; |  2     |                                         |
+; |  1     | DEREF (bool) dereference                |
 ; +--------+-----------------------------------------+
-token:      resb 3
+; |  2     | VALUE (enum.inc or immediate value)     |
+; |  3     |                                         |
+; +--------+-----------------------------------------+
+token:      resb 4
 
 ; last token
-last:       resb 3
+last:       resb 4
 ; temporary token
-temp:       resb 3
+temp:       resb 4
 
 ; operation size (enum.inc)
 size:       resb 1
@@ -79,16 +81,25 @@ nextc:
 ; sets the global token and last (token) structures
 scan:
     _enter
-.read:
     call    nextc
     cmp     ax, _EOF
     je      .end
 
+    ; operation size
+    cmp     ax, '#'
+    jne     .L0
+    call    djb_hash
+    mov     [size], al
+    jmp     .end
+.L0:
+
     ; change last token
     mov     bl, [token + 0]
     mov     [last + 0], bl
-    mov     bx, [token + 1]
-    mov     [last + 1], bx
+    mov     bl, [token + 1]
+    mov     [last + 1], bl
+    mov     bx, [token + 2]
+    mov     [last + 2], bx
 
     ; comma separator
     cmp     ax, ','
@@ -101,49 +112,30 @@ scan:
     jne     .L2
     call    reg
     mov     BYTE [token + 0], _REG
-    mov     WORD [token + 1], ax
+    mov     BYTE [token + 1], 0
+    mov     WORD [token + 2], ax
 
-    _leave  0
+    jmp     .end
 .L2:
 
-    ; literal
+    ; immediate value
     cmp     ax, '$'
     jne     .L3
     call    parse
-    mov     BYTE [token + 0], _LIT
-    mov     WORD [token + 1], ax
+    mov     BYTE [token + 0], _IMM
+    mov     BYTE [token + 1], 0
+    mov     WORD [token + 2], ax
 
-    _leave  0
+    jmp     .end
 .L3:
 
     ; dereference
     cmp     ax, '('
     jne     .L4
-
-    ; save last token
-    mov     bl, [last + 0]
-    mov     [temp + 0], bl
-    mov     bx, [last + 1]
-    mov     [temp + 1], bx
-
-    ; parse the actual token
-    call    scan
-
-    ; recover last token
-    mov     bl, [temp + 0]
-    mov     [last + 0], bl
-    mov     bx, [temp + 1]
-    mov     [last + 1], bx
-
-    ; set token MSb to 1
-    mov     al, [token + 0]
-    or      al, 0x80
-    mov     [token + 0], al
-
+    call    deref
     ; get the ending ')'
     call    nextc
-
-    _leave  0
+    jmp     .end
 .L4:
 
     ; unprefixed
@@ -152,7 +144,62 @@ scan:
     ; instruction
     call    djb_hash
     mov     BYTE [token + 0], _INS
-    mov     WORD [token + 1], ax
+    mov     WORD [token + 2], ax
+
+.end:
+    _leave  0
+
+
+; modify register token values to its dereference counterparts
+deref:
+    _enter
+
+    ; save last token
+    mov     bl, [last + 0]
+    mov     [temp + 0], bl
+    mov     bl, [last + 1]
+    mov     [temp + 1], bl
+    mov     bx, [last + 2]
+    mov     [temp + 2], bx
+
+    ; parse the actual token
+    call    scan
+    ; set DEREF field to 1
+    mov     BYTE [token + 1], 1
+
+    ; recover last token
+    mov     bl, [temp + 0]
+    mov     [last + 0], bl
+    mov     bl, [temp + 1]
+    mov     [last + 1], bl
+    mov     bx, [temp + 2]
+    mov     [last + 2], bx
+
+    ; modify token
+
+    cmp     BYTE [token + 2], _SI
+    jne     .L1
+    mov     BYTE [token + 2], _D_SI
+    jmp     .end
+.L1:
+
+    cmp     BYTE [token + 2], _DI
+    jne     .L2
+    mov     BYTE [token + 2], _D_DI
+    jmp     .end
+.L2:
+
+    cmp     BYTE [token + 2], _BP
+    jne     .L3
+    mov     BYTE [token + 2], _D_BP
+    jmp     .end
+.L3:
+
+    cmp     BYTE [token + 2], _BX
+    jne     .L4
+    mov     BYTE [token + 2], _D_BX
+    jmp     .end
+.L4:
 
 .end:
     _leave  0
@@ -165,39 +212,66 @@ scan:
 reg:
     _enter
     call    nextc
-    mov     BYTE [size], _WORD
-
-    cmp     ax, 'A'
-    je      .A
-
-    cmp     ax, 'B'
-    je      .B
-
-    cmp     ax, 'C'
-    je      .C
-
-    cmp     ax, 'D'
-    je      .D
-
-.A:
-    mov     bx, _AX
-    jmp     .next
-
-.B:
-    mov     bx, _BX
-    jmp     .next
-
-.C:
-    mov     bx, _CX
-    jmp     .next
-
-.D:
-    mov     bx, _DX
-    jmp     .next
-
-.next:
+    mov     bx, ax
     call    nextc
 
+    mov     BYTE [size], _WORD
+
+    ; exceptions (sp/bp/si/di)
+    mov     cx, ax
+    shl     cx, 8
+    or      cx, bx
+
+    cmp     cx, "SP"
+    jne     .SP
+    mov     ax, _SP
+    jmp     .end
+.SP:
+
+    cmp     cx, "BP"
+    jne     .BP
+    mov     ax, _BP
+    jmp     .end
+.BP:
+
+    cmp     cx, "SI"
+    jne     .SI
+    mov     ax, _SI
+    jmp     .end
+.SI:
+
+    cmp     cx, "DI"
+    jne     .DI
+    mov     ax, _DI
+    jmp     .end
+.DI:
+
+    ; general purpose registers
+    cmp     bx, 'A'
+    jne     .A
+    mov     bx, _AX
+    jmp     .next
+.A:
+
+    cmp     bx, 'B'
+    jne     .B
+    mov     bx, _BX
+    jmp     .next
+.B:
+
+    cmp     bx, 'C'
+    jne     .C
+    mov     bx, _CX
+    jmp     .next
+.C:
+
+    cmp     bx, 'D'
+    jne     .D
+    mov     bx, _DX
+    jmp     .next
+.D:
+
+.next:
     cmp     ax, 'L'
     je      .L
 
@@ -212,6 +286,7 @@ reg:
 .L:
     mov     ax, bx
     mov     BYTE [size], _BYTE
+.end:
     _leave  0
 
 
